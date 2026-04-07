@@ -10,25 +10,32 @@ FACE_PROTO = os.path.join(MODELS_DIR, "deploy.prototxt")
 FACE_MODEL = os.path.join(MODELS_DIR, "res10_300x300_ssd_iter_140000.caffemodel")
 AGE_PROTO = os.path.join(MODELS_DIR, "age_deploy.prototxt")
 AGE_MODEL = os.path.join(MODELS_DIR, "age_net.caffemodel")
+GENDER_PROTO = os.path.join(MODELS_DIR, "gender_deploy.prototxt")
+GENDER_MODEL = os.path.join(MODELS_DIR, "gender_net.caffemodel")
 
 MODEL_MEAN_VALUES = (78.4263377603, 87.7689143744, 114.895847746)
 AGE_INTERVALS = ['(0-2)', '(4-6)', '(8-12)', '(15-20)', '(25-32)', '(38-43)', '(48-53)', '(60-100)']
+GENDER_LIST = ['Male', 'Female']
 
 # Load models globally to avoid reloading on every request
 face_net = None
 age_net = None
+gender_net = None
 
 def load_models():
-    global face_net, age_net
-    if face_net is None or age_net is None:
+    global face_net, age_net, gender_net
+    if face_net is None or age_net is None or gender_net is None:
         logger.info("Initializing OpenCV DNN Models...")
         if not os.path.exists(FACE_MODEL):
             raise FileNotFoundError(f"Model file not found: {FACE_MODEL}. Please run download_models.py first.")
         if not os.path.exists(AGE_MODEL):
             raise FileNotFoundError(f"Model file not found: {AGE_MODEL}. Please run download_models.py first.")
+        if not os.path.exists(GENDER_MODEL):
+            raise FileNotFoundError(f"Model file not found: {GENDER_MODEL}. Please run download_models.py first.")
         
         face_net = cv2.dnn.readNetFromCaffe(FACE_PROTO, FACE_MODEL)
         age_net = cv2.dnn.readNetFromCaffe(AGE_PROTO, AGE_MODEL)
+        gender_net = cv2.dnn.readNetFromCaffe(GENDER_PROTO, GENDER_MODEL)
         logger.info("Models loaded successfully.")
 
 def predict_age(image_bytes: bytes):
@@ -82,11 +89,20 @@ def predict_age(image_bytes: bytes):
     age_idx = age_preds[0].argmax()
     age = AGE_INTERVALS[age_idx]
     
+    # Predict gender
+    gender_net.setInput(face_blob)
+    gender_preds = gender_net.forward()
+    gender_idx = gender_preds[0].argmax()
+    gender = GENDER_LIST[gender_idx]
+    gender_confidence = float(gender_preds[0][gender_idx])
+    
     # We map numpy float32 to python float for JSON serialization
-    confidence_val = float(age_preds[0][age_idx])
+    age_confidence_val = float(age_preds[0][age_idx])
 
     return {
         "age_prediction": age,
-        "confidence": confidence_val,
+        "age_confidence": age_confidence_val,
+        "gender_prediction": gender,
+        "gender_confidence": gender_confidence,
         "face_box": {"x1": x1, "y1": y1, "x2": x2, "y2": y2}
     }

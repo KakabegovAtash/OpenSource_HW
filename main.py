@@ -14,8 +14,8 @@ app = FastAPI(
     version="1.0.0"
 )
 
-@app.post("/predict-age/")
-async def predict_age_endpoint(file: UploadFile = File(...)):
+@app.post("/predict/")
+async def predict_endpoint(file: UploadFile = File(...)):
     if not file.content_type.startswith("image/"):
         logger.warning(f"Invalid content type: {file.content_type}")
         raise HTTPException(status_code=400, detail="File provided is not an image.")

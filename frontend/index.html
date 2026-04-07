@@ -79,6 +79,7 @@
             margin-bottom: 8px;
             background: linear-gradient(to right, #e2e8f0, #94a3b8);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
@@ -346,14 +347,21 @@
 
         <!-- Result -->
         <div class="result-card" id="resultCard">
-            <div class="result-title">Estimated Age Bracket</div>
-            <div class="result-age" id="resultAge">--</div>
+            <div class="result-title">Estimated Attributes</div>
+            <div class="result-age"><span id="resultGender" style="color: #cbd5e1;">--</span>, <span id="resultAge">--</span></div>
             <div class="confidence-container">
-                <span class="confidence-text">Confidence Level</span>
+                <span class="confidence-text" style="width: 120px; text-align: right;">Age Confidence</span>
                 <div class="confidence-bar-bg">
                     <div class="confidence-bar-fill" id="confidenceBar"></div>
                 </div>
-                <span class="confidence-text" id="confidencePercent">0%</span>
+                <span class="confidence-text" id="confidencePercent" style="width: 30px;">0%</span>
+            </div>
+            <div class="confidence-container">
+                <span class="confidence-text" style="width: 120px; text-align: right;">Gender Confidence</span>
+                <div class="confidence-bar-bg">
+                    <div class="confidence-bar-fill" id="genderConfidenceBar"></div>
+                </div>
+                <span class="confidence-text" id="genderConfidencePercent" style="width: 30px;">0%</span>
             </div>
         </div>
     </div>
@@ -370,8 +378,11 @@
         const loader = document.getElementById('loader');
         const resultCard = document.getElementById('resultCard');
         const resultAge = document.getElementById('resultAge');
+        const resultGender = document.getElementById('resultGender');
         const confidenceBar = document.getElementById('confidenceBar');
         const confidencePercent = document.getElementById('confidencePercent');
+        const genderConfidenceBar = document.getElementById('genderConfidenceBar');
+        const genderConfidencePercent = document.getElementById('genderConfidencePercent');
         const errorMsg = document.getElementById('errorMsg');
 
         let currentFile = null;
@@ -463,7 +474,7 @@
             try {
                 // Determine our API endpoint dynamically.
                 // In this case, our API and UI are served from the same host.
-                const response = await fetch('/predict-age/', {
+                const response = await fetch('/predict/', {
                     method: 'POST',
                     body: formData
                 });
@@ -494,23 +505,26 @@
             // The model returns '(25-32)', let's format it nicer without parentheses
             ageBracket = ageBracket.replace(/[()]/g, '');
             
-            resultAge.textContent = `${ageBracket} years`;
+            resultAge.textContent = `${ageBracket} yrs`;
+            resultGender.textContent = data.gender_prediction;
             
-            const conf = Math.round(data.confidence * 100);
+            const confAge = Math.round(data.age_confidence * 100);
+            const confGen = Math.round(data.gender_confidence * 100);
             
             // Delay rendering bar for animation effect
             setTimeout(() => {
-                confidenceBar.style.width = `${conf}%`;
-                confidencePercent.textContent = `${conf}%`;
+                confidenceBar.style.width = `${confAge}%`;
+                confidencePercent.textContent = `${confAge}%`;
+                
+                genderConfidenceBar.style.width = `${confGen}%`;
+                genderConfidencePercent.textContent = `${confGen}%`;
                 
                 // Color formatting based on confidence
-                if(conf < 50) {
-                    confidenceBar.style.background = 'var(--error-color)';
-                } else if(conf < 75) {
-                    confidenceBar.style.background = '#fbbf24'; // Warning yellow/orange
-                } else {
-                    confidenceBar.style.background = 'var(--success-color)';
-                }
+                [ {bar: confidenceBar, conf: confAge}, {bar: genderConfidenceBar, conf: confGen} ].forEach(item => {
+                    if(item.conf < 50) item.bar.style.background = 'var(--error-color)';
+                    else if(item.conf < 75) item.bar.style.background = '#fbbf24';
+                    else item.bar.style.background = 'var(--success-color)';
+                });
             }, 100);
 
             resultCard.classList.add('show');
