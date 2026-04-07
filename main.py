@@ -1,8 +1,9 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from ml.predictor import predict_age
 import uvicorn
 import logging
+import os
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -41,6 +42,16 @@ async def predict_age_endpoint(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 @app.get("/")
+def serve_ui():
+    html_path = os.path.join(os.path.dirname(__file__), "frontend", "index.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return HTMLResponse(content=content)
+    except FileNotFoundError:
+        return JSONResponse(status_code=404, content={"error": "UI file not found. Ensure frontend/index.html exists."})
+
+@app.get("/health")
 def health_check():
     return {"status": "ok", "message": "API is running. Send a POST request with an image to /predict-age/"}
 
