@@ -36,3 +36,22 @@ jobs:
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/age-prediction-api:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    runs-on: self-hosted
+    needs: build-and-push
+    # Only run the deployment after a successful merge/push to the main branch
+    if: github.event_name != 'pull_request'
+    
+    steps:
+      - name: Pull and Run on Local Machine
+        run: |
+          # 1. Pull the newest image from Docker Hub
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/age-prediction-api:latest
+          
+          # 2. Stop and remove the old container if it exists (the || true prevents the step from failing if it doesn't exist)
+          docker stop age-prediction-container || true
+          docker rm age-prediction-container || true
+          
+          # 3. Start the newly pulled image
+          docker run -d --name age-prediction-container -p 8000:8000 --restart unless-stopped ${{ secrets.DOCKERHUB_USERNAME }}/age-prediction-api:latest
